@@ -4,6 +4,7 @@ Django settings for learning_interview project.
 
 import os
 from pathlib import Path
+import environ
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -76,10 +77,20 @@ ASGI_APPLICATION = 'learning_interview.asgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.sqlite3',  # SQLite 用のエンジン
+        'NAME': BASE_DIR / 'db.sqlite3',         # データベースファイルのパス
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('POSTGRES_DB', 'myinterviewer'),
+#         'USER': os.environ.get('POSTGRES_USER', 'myuser'),
+#         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'mypassword'),
+#         'HOST': 'db',  # docker-compose の service 名
+#         'PORT': 5432,
+#     }
+# }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -119,7 +130,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # OpenAI API settings
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+env = environ.Env()
+environ.Env.read_env()  # .env を読み込む
+OPENAI_API_KEY = env("OPENAI_API_KEY")
+#OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Chroma DB settings
 CHROMA_DB_PATH = BASE_DIR / 'chroma_db'

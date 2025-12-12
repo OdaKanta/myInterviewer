@@ -166,12 +166,12 @@ class InterviewSessionViewSet(viewsets.ModelViewSet):
                 {'success': False, 'error': '校正するテキストが指定されていません。'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
         try:
             # OpenAI GPT APIを使用してテキストを校正
             import openai
             from django.conf import settings
             
+            print("[DEBUG] OK", file=sys.stderr)
             # APIキーの確認
             if not settings.OPENAI_API_KEY:
                 return Response(
@@ -180,7 +180,7 @@ class InterviewSessionViewSet(viewsets.ModelViewSet):
                 )
             
             client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-
+            
             # 校正タイプに応じてプロンプトを調整
             if correction_type == 'explanation':
                 system_prompt = """以下の説明文は学習者が講義内容について振り返ったものです．以下の説明文を以下の観点で校正してください：
@@ -193,6 +193,7 @@ class InterviewSessionViewSet(viewsets.ModelViewSet):
             else:
                 system_prompt = """あなたは文章校正の専門家です。以下のテキストを文法的に正しく、より読みやすい文章に校正してください。元の意味は保持してください。"""
            
+            print("[DEBUG] OK3", file=sys.stderr)
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -203,8 +204,8 @@ class InterviewSessionViewSet(viewsets.ModelViewSet):
                 temperature=0.0
             )
             
+            print("[DEBUG] OK2", file=sys.stderr)
             corrected_text = response.choices[0].message.content.strip()
-            
             return Response({
                 'success': True,
                 'corrected_text': corrected_text,
