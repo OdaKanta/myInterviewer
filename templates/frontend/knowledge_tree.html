@@ -1,0 +1,528 @@
+{% extends 'base.html' %}
+
+{% block title %}知識ツリー可視化{% endblock %}
+
+{% block styles %}
+<style>
+    /* ================================================= */
+    /* ダークモード配色調整: Deep Dark / Professional Look */
+    /* ================================================= */
+
+    :root {
+        /* グローバル変数オーバーライド: より深い背景色とソフトなテキスト色 */
+        --bg-color: #0d1117; 	 	/* ディープダークな背景 */
+        --surface-color: #161b22; 	/* メインカード/ナビゲーションの表面色 */
+        --text-color: #c9d1d9; 	 	/* ソフトなライトグレーのテキスト */
+        --border-color: #30363d; 	/* 区切り線/ボーダー */
+        
+        /* アクセントカラー */
+        --primary-color: #3c89ff; 	/* 視認性の高い鮮やかな青 */
+        --success-color: #3fb950; 	/* 成功を表す鮮やかな緑 */
+        --warning-color: #f7b949; 	/* 警告を表すソフトイエロー */
+        --danger-color: #f85149; 	/* エラーを表す赤 */
+    }
+
+    /* base.htmlのカスタムクラスの再定義 (親要素の背景色に適用) */
+    body { 
+        background-color: var(--bg-color) !important; 
+        color: var(--text-color) !important; 
+    }
+
+    /* メインカード (ダッシュボード全体) の再定義 */
+    .card-custom {
+        background-color: var(--surface-color) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+    }
+    .card-header-custom {
+        background-color: #21262d !important; /* surfaceより少し濃くしてヘッダーを区別 */
+        border-bottom-color: var(--border-color) !important;
+        color: var(--text-color) !important;
+    }
+
+    /* ボタンの調整 */
+    .btn-primary {
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+        color: var(--surface-color) !important;
+    }
+    .btn-outline-primary {
+        color: var(--primary-color) !important;
+        border-color: var(--border-color) !important;
+        --bs-btn-hover-bg: #3c89ff33; 
+        --bs-btn-hover-color: var(--primary-color);
+    }
+    .btn-outline-secondary { /* リセットボタン用 */
+        color: #8b949e !important;
+        border-color: var(--border-color) !important;
+        --bs-btn-hover-bg: #30363d;
+        --bs-btn-hover-color: #c9d1d9;
+    }
+
+    /* ================================================= */
+    /* 知識ツリー固有のスタイル（ダークモード対応） */
+    /* ================================================= */
+
+    /* 基本スタイル */
+    #treeVisualization {
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-color); 
+    }
+
+    /* ノードスタイル */
+    .force-node {
+        /* D3.jsでstroke色を指定するため、ここでは基本的な設定のみ */
+        stroke-width: 2px;
+        cursor: pointer;
+    }
+
+    .node-label {
+        /* D3.jsでfill色を指定するため、ここでは基本的な設定のみ */
+        font: 12px sans-serif;
+        text-anchor: middle;
+        pointer-events: none;
+        cursor: pointer;
+    }
+
+    /* エッジスタイル */
+    .force-link {
+        /* D3.jsでstroke色を指定するため、ここでは基本的な設定のみ */
+        stroke-width: 1.5px; 
+        fill: none;
+    }
+
+    /* 情報パネルスタイル */
+    .node-info-content {
+        font-size: 14px;
+    }
+
+    .node-header h6 {
+        color: var(--text-color); 
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .section-title {
+        color: var(--primary-color); 
+        font-size: 14px;
+        font-weight: bold;
+        border-bottom: 1px solid var(--border-color); 
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+    }
+
+    .info-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #8b949e; 
+        min-width: 80px;
+    }
+
+    .info-value {
+        font-weight: 500;
+        color: var(--text-color);
+        flex: 1;
+        text-align: right;
+    }
+
+    .description-text {
+        background-color: #1f1f1f; 
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 13px;
+        line-height: 1.4;
+        margin: 0;
+        color: var(--text-color);
+    }
+    
+    /* プログレスバーの色分け */
+    .progress-bar {
+        background-color: var(--success-color) !important;
+    }
+    .progress-bar[aria-valuenow^="3"] { 
+        background-color: var(--danger-color) !important;
+    }
+    .progress-bar[aria-valuenow^="6"] { 
+        background-color: var(--warning-color) !important;
+    }
+</style>
+{% endblock styles %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="display-5 fw-bold text-light"><i class="fas fa-sitemap me-2" style="color: var(--primary-color);"></i>知識ツリー可視化</h1>
+                <p class="lead text-secondary">{{ material.title }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card card-custom">
+            <div class="card-header card-header-custom">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-project-diagram me-2" style="color: var(--primary-color);"></i>インタラクティブツリー</h5>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-secondary btn-sm" id="resetSimulation">
+                            <i class="fas fa-redo me-1"></i>リセット
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="treeVisualization" style="width: 100%; height: 70vh; overflow: hidden;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card card-custom h-100">
+            <div class="card-header card-header-custom">
+                <h5><i class="fas fa-info-circle me-2" style="color: var(--warning-color);"></i>ノード情報</h5>
+            </div>
+            <div class="card-body" style="height: 70vh; overflow-y: auto;">
+                <div id="nodeInfoPanel">
+                    <div class="text-center text-secondary p-4">
+                        <i class="fas fa-mouse-pointer fa-3x mb-3"></i>
+                        <p>ノードをクリックまたはホバーして詳細情報を表示</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+// グローバル変数
+let treeData = null;
+let svg, g;
+let currentNodeId = null;
+let simulation = null;
+
+// CSS変数に設定したテキストカラーの具体的な色値（D3.js用）
+const D3_TEXT_COLOR = '#c9d1d9'; 
+
+// 初期化
+document.addEventListener('DOMContentLoaded', function() {
+    initVisualization();
+    loadTreeData();
+    setupEventListeners();
+});
+
+// 可視化初期化
+function initVisualization() {
+    const container = d3.select("#treeVisualization");
+    
+    svg = container.append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .call(d3.zoom()
+            .scaleExtent([0.1, 3])
+            .on("zoom", function(event) {
+                g.attr("transform", event.transform);
+            }));
+    
+    g = svg.append("g");
+}
+
+// ツリーデータ読み込み
+function loadTreeData() {
+    const materialId = parseInt('{{ material.id }}');
+    
+    fetch(`/api/knowledge-tree/nodes/tree/?material_id=${materialId}`)
+        .then(response => response.json())
+        .then(data => {
+            treeData = data;
+            renderVisualization();
+        })
+        .catch(error => {
+            console.error('Error loading tree data:', error);
+            showError('知識ツリーデータの読み込みに失敗しました。');
+        });
+}
+
+// 可視化レンダリング
+function renderVisualization() {
+    if (!treeData) return;
+    
+    g.selectAll("*").remove();
+    renderForceDirected();
+}
+
+// 力学モデル表示
+function renderForceDirected() {
+    const containerRect = document.getElementById('treeVisualization').getBoundingClientRect();
+    const width = containerRect.width;
+    const height = containerRect.height;
+    
+    // データ変換
+    const { nodes, links } = processTreeData(treeData);
+    
+    // シミュレーション設定
+    simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links)
+            .id(d => d.id)
+            .distance(80)
+            .strength(0.8))
+        .force("charge", d3.forceManyBody()
+            .strength(d => d.level === 0 ? -800 : -400))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collision", d3.forceCollide()
+            .radius(d => d.level === 0 ? 25 : 15)
+            .strength(0.7));
+    
+    // マーカー定義
+    createArrowMarkers();
+    
+    // リンク描画
+    const link = g.append("g")
+        .selectAll("line")
+        .data(links)
+        .enter().append("line")
+        .attr("class", "force-link")
+        // 修正: リンクの色を具体的なテキストカラーに設定
+        .attr("stroke", D3_TEXT_COLOR) 
+        .attr("stroke-width", 1.5)
+        .attr("marker-end", "url(#arrowhead)");
+    
+    // ノード描画
+    const node = g.append("g")
+        .selectAll("g")
+        .data(nodes)
+        .enter().append("g")
+        .attr("class", "node-group")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended))
+        .on("click", handleNodeClick)
+        .on("mouseover", handleNodeMouseOver);
+    
+    // ノード円
+    node.append("circle")
+        .attr("class", "force-node")
+        .attr("r", d => d.level === 0 ? 20 : (d.level === 1 ? 15 : 10))
+        .attr("fill", d => getNodeColor(d.understanding_score))
+        // 修正: ノードの枠線色を具体的なテキストカラーに設定
+        .attr("stroke", D3_TEXT_COLOR); 
+    
+    // ノードラベル
+    node.append("text")
+        .attr("class", "node-label")
+        .attr("dy", d => d.level === 0 ? 30 : 25)
+        .style("font-size", d => d.level === 0 ? "14px" : "12px")
+        .style("font-weight", d => d.level === 0 ? "bold" : "normal")
+        // 修正: ノードラベルの色を具体的なテキストカラーに設定
+        .attr("fill", D3_TEXT_COLOR) 
+        .text(d => d.title);
+    
+    // シミュレーション更新
+    simulation.on("tick", () => {
+        link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+        
+        node.attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+}
+
+// ツリーデータ処理
+function processTreeData(rootNode) {
+    const nodes = [];
+    const links = [];
+    let nodeIdCounter = 0;
+    
+    function traverse(node, parent = null, level = 0) {
+        const nodeId = nodeIdCounter++;
+        const processedNode = {
+            ...node,
+            id: nodeId,
+            level: level,
+            parent: parent,
+            related_chunks: node.related_chunks
+        };
+        nodes.push(processedNode);
+        
+        if (parent !== null) {
+            links.push({
+                source: parent.id,
+                target: nodeId,
+                level: level
+            });
+        }
+        
+        if (node.children) {
+            node.children.forEach(child => traverse(child, processedNode, level + 1));
+        }
+    }
+    
+    traverse(rootNode);
+    return { nodes, links };
+}
+
+// 矢印マーカー作成
+function createArrowMarkers() {
+    const defs = svg.append("defs");
+    defs.append("marker")
+        .attr("id", "arrowhead")
+        .attr("viewBox", "0 -2 4 4")
+        .attr("refX", 12)
+        .attr("refY", 0)
+        .attr("markerWidth", 3)
+        .attr("markerHeight", 3)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M0,-2L4,0L0,2")
+        // 修正: 矢印の色を具体的なテキストカラーに設定
+        .attr("fill", D3_TEXT_COLOR); 
+}
+
+// イベントハンドラー
+function handleNodeClick(event, d) {
+    currentNodeId = d.id;
+    updateNodeInfoPanel(d, 'click');
+    
+    // ハイライト効果
+    // ノードの枠線色を#c9d1d9に設定
+    d3.selectAll('.node-group circle').attr('stroke-width', 2).attr('stroke', D3_TEXT_COLOR); 
+    d3.select(event.currentTarget).select('circle').attr('stroke-width', 4).attr('stroke', 'var(--primary-color)');
+}
+
+function handleNodeMouseOver(event, d) {
+    updateNodeInfoPanel(d, 'hover');
+}
+
+// ドラッグ関数
+function dragstarted(event, d) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+}
+
+function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+}
+
+function dragended(event, d) {
+    if (!event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+}
+
+// 情報パネル更新
+function updateNodeInfoPanel(d, interactionType) {
+    const panel = document.getElementById('nodeInfoPanel');
+    
+    const panelContent = `
+        <div class="node-info-content">
+            <div class="node-header mb-3">
+                <h3 class="mb-1">${d.title}</h3>
+                <small class="text-secondary">
+                    <i class="fas fa-${interactionType === 'click' ? 'mouse-pointer' : 'hand-pointer'} me-1"></i>
+                    ${interactionType === 'click' ? 'クリックされました' : 'ホバー中'}
+                </small>
+            </div>
+            
+            <div class="info-section mb-3">
+                <h5 class="section-title">基本情報</h5>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">ノードID:</span>
+                        <span class="info-value">${d.id}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">レベル:</span>
+                        <span class="info-value">${d.level}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section mb-3">
+                <h5 class="section-title">関連チャンク</h5>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">チャンクID:</span>
+                        <span class="info-value">
+                            ${d.related_chunks ? d.related_chunks.map(c => c.chunk_index).join(', ') : 'なし'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            ${d.description ? `
+                <div class="info-section mb-3">
+                    <h5 class="section-title">説明</h5>
+                    <p class="description-text">${d.description}</p>
+                </div>
+            ` : ''}
+            
+            <div class="info-section mb-3">
+                <h5 class="section-title">関係性</h5>
+                <div class="info-grid">
+                    ${d.parent ? `
+                        <div class="info-item">
+                            <span class="info-label">親ノード:</span>
+                            <span class="info-value">${d.parent.title}</span>
+                        </div>
+                    ` : ''}
+                    ${d.children && d.children.length > 0 ? `
+                        <div class="info-item">
+                            <span class="info-label">子ノード数:</span>
+                            <span class="info-value">${d.children.length}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    panel.innerHTML = panelContent;
+}
+
+// イベントリスナー設定
+function setupEventListeners() {
+    document.getElementById('resetSimulation').addEventListener('click', () => {
+        if (simulation) simulation.alpha(1).restart();
+    });
+}
+
+// ユーティリティ関数
+function getNodeColor(score) {
+    if (score >= 0.8) return 'var(--success-color)';
+    if (score >= 0.6) return 'var(--warning-color)';
+    if (score >= 0.3) return 'var(--danger-color)';
+    return '#8b949e'; // text-secondaryに相当
+}
+
+function showError(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container-fluid').prepend(alertDiv);
+}
+</script>
+{% endblock %}

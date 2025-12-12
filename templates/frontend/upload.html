@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+{% load static %} {# Djangoテンプレートタグの慣例として追加 #}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-upload me-2"></i>教材アップロード</h1>
+        <p class="lead">PDFファイルをアップロードして知識ツリーを生成します。</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    {# フォーム部分を中央寄せにするため col-md-8 mx-auto を使用 #}
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-file-pdf me-2"></i>新しい教材をアップロード</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="title" class="form-label">教材タイトル</label>
+                        <input type="text" class="form-control" id="title" name="title" required 
+                                placeholder="例: 機械学習基礎">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="file" class="form-label">PDFファイル</label>
+                        <div class="file-upload-wrapper">
+                                <input type="file" class="form-control file-input-hidden" id="file" name="file" 
+                                    accept=".pdf,application/pdf" required>
+                                
+                                <label for="file" class="btn btn-primary custom-file-trigger">
+                                    <i class="fas fa-file-upload me-1"></i> ファイルを選択
+                                </label>
+                                <span class="file-name-display" id="fileNameDisplay">ファイルが選択されていません</span>
+                            </div>
+                        <div class="form-text">
+                            PDFファイルのみをアップロードしてください。最大ファイルサイズ: 10MB
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>処理について:</strong>
+                        アップロード後、AIが自動的にPDFを解析して知識ツリーを生成します。
+                        処理には数分かかる場合があります。
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'home' %}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-arrow-left me-1"></i>戻る
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload me-1"></i>アップロード
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb me-2"></i>アップロードのコツ</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        テキストが明確に読み取れるPDFファイルを使用してください
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        章立てや見出しが整理されている教材が最適です
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        スキャンされた画像PDFよりも、テキストPDFの方が解析精度が高いです
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        パスワード保護されたファイルは事前に保護を解除してください
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ファイル選択時のプレビュー
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const fileNameDisplay = document.getElementById('fileNameDisplay'); // ★追加
+
+    if (file) {
+        // ★ファイル名を表示を更新
+        fileNameDisplay.textContent = file.name;
+
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        if (fileSize > 10) {
+            alert('ファイルサイズが10MBを超えています。');
+            e.target.value = '';
+            fileNameDisplay.textContent = 'ファイルが選択されていません'; // ★エラー時はリセット
+            return;
+        }
+        
+        const fileName = file.name;
+        const fileType = file.type;
+        
+        if (fileType !== 'application/pdf') {
+            alert('PDFファイルのみアップロード可能です。');
+            e.target.value = '';
+            fileNameDisplay.textContent = 'ファイルが選択されていません'; // ★エラー時はリセット
+            return;
+        }
+        
+        console.log(`Selected file: ${fileName} (${fileSize}MB)`);
+    } else {
+        fileNameDisplay.textContent = 'ファイルが選択されていません'; // ★ファイルがキャンセルされた場合
+    }
+});
+
+// フォーム送信時の処理
+document.querySelector('form').addEventListener('submit', function(e) {
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>アップロード中...';
+    submitBtn.disabled = true;
+});
+</script>
+
+<style>
+/* ------------------------------------------- */
+/* questioning_phase.html から抽出した共通ダークモード定義 */
+/* ------------------------------------------- */
+:root {
+    --dark-bg: #1e1e2f; 
+    --card-bg: #27293d; 
+    --text-color: #e4e6eb; 
+    --sub-text-color: #9295a6; 
+    --border-color: #3b3d54; 
+    --primary-color: #7957d5; 
+    --secondary-color: #6c757d; /* secondaryボタン用に追加 */
+    --success-color: #00d1b2; 
+    --info-color: #3eaf7c; 
+    --danger-color: #ff3860; 
+    --warning-color: #ffda00; 
+}
+
+/* <body>全体への適用 (base.htmlで定義されているはずですが念のため) */
+body {
+    background-color: var(--dark-bg);
+    color: var(--text-color);
+    font-family: 'Noto Sans JP';
+}
+
+h1, h5, h6 {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+/* カードのスタイル（共通） */
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease-in-out;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+.card-header {
+    background-color: #2e3047; 
+    border-bottom: 1px solid var(--border-color);
+}
+
+.text-muted {
+    color: var(--sub-text-color) !important;
+}
+
+/* Bootstrapのカラーバッジ調整 */
+.badge.bg-success { background-color: var(--success-color) !important; color: #1e1e2f; }
+.badge.bg-primary { background-color: var(--primary-color) !important; color: #fff; }
+.badge.bg-info { background-color: var(--info-color) !important; color: #fff; }
+
+/* フォーム要素のダークモード対応 */
+.form-label {
+    color: var(--text-color);
+}
+
+.form-control {
+    background-color: #3b3d54; /* 入力欄の背景色を濃く */
+    color: var(--text-color) !important; /* ★ここを修正: 入力文字の色を強制的に白に */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+}
+/* 教材タイトルのプレースホルダーの色を調整 */
+.form-control::placeholder {
+    color: var(--sub-text-color);
+    opacity: 0.7;
+}
+
+
+.form-control:focus {
+    background-color: #3b3d54;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(121, 87, 213, 0.25);
+}
+
+.form-text {
+    color: var(--sub-text-color) !important;
+}
+
+/* アラートのダークモード対応 */
+.alert-info {
+    background-color: #3b3d54;
+    color: var(--text-color);
+    border-color: #3b3d54;
+}
+
+/* ボタンのスタイル調整 */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #6a49be;
+    border-color: #6a49be;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* アップロードのコツのリストスタイル */
+.list-unstyled li i.fa-check.text-success {
+    color: var(--success-color) !important;
+}
+.list-unstyled li i.fa-exclamation-triangle.text-warning {
+    color: var(--warning-color) !important;
+}
+.file-upload-wrapper {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color); /* フォームコントロールと統一 */
+    border-radius: 8px;
+    padding: 8px; /* パディングを追加 */
+    background-color: #3b3d54; /* フォームコントロールの背景色 */
+}
+
+.file-input-hidden {
+    /* 実際の input[type="file"] を完全に非表示にし、カスタムボタンで操作する */
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -1;
+}
+
+.custom-file-trigger {
+    /* プライマリボタンのデザインを流用 */
+    margin-right: 15px;
+    cursor: pointer;
+    font-weight: 500;
+    padding: 8px 15px;
+    border-radius: 6px;
+    /* transition: all 0.2s ease; */
+}
+
+.file-name-display {
+    color: var(--text-color) !important; /* ファイル名の文字の色を白に */
+    flex-grow: 1; /* ファイル名が長い場合にスペースを確保 */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-tachometer-alt me-2"></i>ダッシュボード</h1>
+        {% if user.is_authenticated %}
+            <p class="lead">こんにちは、{{ user.first_name|default:user.username }}さん！
+                {% if is_material_manager %}
+                    <span class="badge bg-success ms-2"><i class="fas fa-crown me-1"></i>教材管理者</span>
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-book me-2"></i>学習教材</h5>
+                {% if is_material_manager %}
+                    <a href="{% url 'upload_material' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>新しい教材をアップロード
+                    </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if materials %}
+                    <div class="row">
+                        {% for material in materials %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ material.title }}</h6>
+                                    <p class="card-text text-muted">
+                                        作成日: {{ material.created_at|date:"Y/m/d" }}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            {% if material.processed %}
+                                                <span class="badge bg-success">処理完了</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">処理中</span>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            {% if material.processed %}
+                                                <a href="{% url 'knowledge_tree_visualization' material.id %}" class="btn btn-sm btn-outline-primary me-1">
+                                                    <i class="fas fa-sitemap me-1"></i>ツリー表示
+                                                </a>
+                                                <button class="btn btn-sm btn-primary" onclick="startInterview({{ material.id }})">
+                                                    <i class="fas fa-play me-1"></i>開始
+                                                </button>
+                                            {% else %}
+                                                <small class="text-muted">処理中...</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">まだ教材がアップロードされていません。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+            <div class="card-body">
+                {% if materials %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>タイトル</th>
+                                    <th>処理状況</th>
+                                    <th>アップロード日時</th>
+                                    <th>アクション</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for material in materials %}
+                                <tr>
+                                    <td>{{ material.title }}</td>
+                                    <td>
+                                        {% if material.processed %}
+                                            <span class="badge bg-success">処理済み</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">処理中</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ material.created_at|date:"Y/m/d H:i" }}</td>
+                                    <td>
+                                        {% if material.processed %}
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-primary" onclick="startInterview({{ material.id }})">
+                                                    <i class="fas fa-play me-1"></i>インタビュー
+                                                </button>
+                                                <a href="{% url 'knowledge_tree_visualization' material.id %}" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-sitemap me-1"></i>ツリー表示
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-secondary" disabled>
+                                                <i class="fas fa-spinner fa-spin me-1"></i>処理中
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">まだ教材がアップロードされていません。</p>
+                        <a href="{% url 'upload_material' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>最初の教材をアップロード
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>最近のセッション</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_sessions %}
+                    {% for session in recent_sessions %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                        <div>
+                            <small class="text-muted">{{ session.material.title }}</small><br>
+                            <span class="badge bg-{% if session.status == 'completed' %}success{% elif session.status == 'questioning' %}primary{% else %}secondary{% endif %}">
+                                {{ session.get_status_display }}
+                            </span>
+                        </div>
+                        <small class="text-muted">{{ session.started_at|date:"m/d H:i" }}</small>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">セッション履歴がありません。</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle me-2"></i>使い方</h5>
+            </div>
+            <div class="card-body">
+                <ol class="list-unstyled">
+                    <li><i class="fas fa-upload text-primary me-2"></i>PDFファイルをアップロード</li>
+                    <li><i class="fas fa-cogs text-info me-2"></i>自動で知識ツリーを生成</li>
+                    <li><i class="fas fa-microphone text-success me-2"></i>学習内容を音声で説明</li>
+                    <li><i class="fas fa-question-circle text-warning me-2"></i>LLMがソクラテス式に質問</li>
+                    <li><i class="fas fa-chart-line text-danger me-2"></i>理解度を可視化</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- インタビュー開始モーダル -->
+<div class="modal fade" id="startInterviewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">インタビューセッション開始</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>新しいインタビューセッションを開始しますか？</p>
+                <div id="materialInfo"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="confirmStartInterview">開始</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedMaterialId = null;
+
+// CSRFトークンをCookieから取得する関数
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function startInterview(materialId) {
+    selectedMaterialId = materialId;
+    
+    // 教材情報を表示
+    fetch(`/api/knowledge-tree/materials/${materialId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('materialInfo').innerHTML = `
+                <div class="alert alert-info">
+                    <strong>教材:</strong> ${data.title}<br>
+                    <strong>処理状況:</strong> ${data.processed ? '処理済み' : '処理中'}
+                </div>
+            `;
+        });
+    
+    const modal = new bootstrap.Modal(document.getElementById('startInterviewModal'));
+    modal.show();
+}
+
+document.getElementById('confirmStartInterview').addEventListener('click', function() {
+    if (selectedMaterialId) {
+        // インタビューセッションを作成
+        fetch('/api/interview/sessions/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                material: selectedMaterialId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.id) {
+                window.location.href = `/interview/${data.id}/explanation/`;
+            } else {
+                alert('セッションの作成に失敗しました。');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました。');
+        });
+    }
+});
+</script>
+{% endblock %}

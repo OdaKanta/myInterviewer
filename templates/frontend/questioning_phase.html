@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+{% csrf_token %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-comments me-2"></i>深堀フェーズ</h1>
+        <p class="lead">{{ material.title }} - AI面接官とのインタラクティブセッション</p>
+        
+        <div class="progress mb-4" style="height: 8px;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+        </div>
+        <div class="d-flex justify-content-between mb-4">
+            <span class="badge bg-success">説明フェーズ完了</span>
+            <span class="badge bg-primary">深堀フェーズ</span>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-comment-dots me-2"></i>AI面接官との対話</h5>
+                <div>
+                    <span class="badge bg-primary" id="sessionStatus">{{ session.get_status_display }}</span>
+                    <span class="timer" id="timer">00:00</span>
+                </div>
+            </div>
+            
+            <div class="card-body d-flex flex-column">
+                <div class="chat-container flex-grow-1 mb-3" id="chatContainer">
+                    <div class="message ai">
+                        <div class="message-content">
+                            <strong><i class="fas fa-robot me-1"></i>AI面接官:</strong>
+                            お疲れ様でした！説明を確認させていただきました。それでは、理解をより深めるためにいくつか質問をさせていただきます。音声またはテキストでお答えください。
+                        </div>
+                        <div class="message-time">{{ session.started_at|date:"H:i" }}</div>
+                    </div>
+                </div>
+                
+                <div class="input-area">
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-microphone me-1"></i>音声認識</h6>
+                            <span class="badge bg-info" id="transcriptionStatus">Ready</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="partialTranscription" class="text-muted mb-2" style="min-height: 20px;">
+                                </div>
+                            <div id="finalTranscription" class="fw-bold" style="min-height: 20px;">
+                                </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-edit me-1"></i>回答入力</h6>
+                            <button class="record-button" id="recordBtn" title="音声録音">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <textarea class="form-control" id="answerInput" 
+                                            placeholder="音声入力またはテキスト入力で回答してください..." rows="4"></textarea>
+                            <div class="mt-3 d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    音声認識結果がここに自動で追加されます
+                                </small>
+                                <button type="button" class="btn btn-primary" id="sendAnswerBtn" disabled>
+                                    <i class="fas fa-paper-plane me-1"></i>送信
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6><i class="fas fa-info-circle me-1"></i>セッション情報</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-6"><strong>教材:</strong></div>
+                    <div class="col-6">{{ material.title }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>開始時間:</strong></div>
+                    <div class="col-6">{{ session.started_at|date:"H:i" }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>フェーズ:</strong></div>
+                    <div class="col-6">
+                        <span class="badge bg-primary">深堀フェーズ</span>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6"><strong>質問数:</strong></div>
+                    <div class="col-6" id="questionCount">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6><i class="fas fa-file-text me-1"></i>あなたの説明（要約）</h6>
+            </div>
+            <div class="card-body">
+                <div id="explanationSummary" class="text-muted">
+                    説明内容を読み込み中...
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-warning w-100" id="pauseSessionBtn">
+                        <i class="fas fa-pause-circle me-1"></i>セッション中断
+                    </button>
+                    <button class="btn btn-info w-100 mt-2 btn-disabled-style" id="endSessionBtn" disabled>
+                        <i class="fas fa-check me-1"></i>セッション終了
+                    </button>
+                </div>
+                </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="endSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">セッション終了確認</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>セッションを終了しますか？**セッション終了**を選択すると、進捗情報と履歴は<span class="fw-bold text-danger">完全に破棄され</span>、再開できなくなります。</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle me-1"></i>
+                    セッションを一時的に中断したい場合は、モーダルを閉じて**「セッション中断」**ボタンを押してください。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-info" id="confirmEndBtn">
+                    <i class="fas fa-check me-1"></i>終了する
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="/static/js/audio-manager.js"></script>
+<script type="module" src="/static/js/questioning-phase.js"></script>
+<style>
+/* ------------------------------------------- */
+/* 1. ベースのダークモード定義（base.htmlまたはメインCSSに相当） */
+/* ------------------------------------------- */
+:root {
+    --dark-bg: #1e1e2f; /* 濃い背景色 */
+    --card-bg: #27293d; /* カードの背景色 */
+    --text-color: #e4e6eb; /* 基本の文字色（明るい） */
+    --sub-text-color: #9295a6; /* サブテキスト色 */
+    --border-color: #3b3d54; /* ボーダー・区切り線 */
+    --primary-color: #7957d5; /* プライマリ（紫系） */
+    --success-color: #00d1b2; /* 成功（緑系） */
+    --info-color: #3eaf7c; /* 情報（深緑系） */
+    --danger-color: #ff3860; /* 危険（赤系） */
+    --warning-color: #ffda00; /* 警告（黄色系）★追加 */
+}
+
+/* <body>全体への適用 */
+body {
+    background-color: var(--dark-bg);
+    color: var(--text-color);
+    font-family: 'Noto Sans JP';
+}
+
+/* ヘッダー/見出しの調整 */
+h1, h5, h6 {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+/* カードのスタイル（共通） */
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease-in-out;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+.card-header {
+    background-color: #2e3047; /* カードヘッダーの強調色 */
+    border-bottom: 1px solid var(--border-color);
+}
+
+.text-muted {
+    color: var(--sub-text-color) !important;
+}
+
+/* Bootstrapのカラーバッジ調整 */
+.badge.bg-success { background-color: var(--success-color) !important; color: #1e1e2f; }
+.badge.bg-primary { background-color: var(--primary-color) !important; color: #fff; }
+.badge.bg-info { background-color: var(--info-color) !important; color: #fff; }
+
+/* プログレスバーの調整 */
+.progress {
+    border-radius: 10px;
+    overflow: hidden;
+}
+.progress-bar.bg-success {
+    background-color: var(--success-color) !important;
+}
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* モーダル調整 */
+.modal-content {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
+.modal-header {
+    border-bottom-color: var(--border-color);
+}
+.modal-footer {
+    border-top-color: var(--border-color);
+}
+.alert-info {
+    background-color: #3b3d54;
+    color: var(--text-color);
+    border-color: #3b3d54;
+}
+.alert-warning { /* ★追加: 警告アラートの調整 */
+    background-color: #473e2e;
+    color: var(--warning-color);
+    border-color: #665b3d;
+}
+
+/* ------------------------------------------- */
+/* 2. チャットエリアのCSS（こだわり部分） */
+/* ------------------------------------------- */
+
+/* チャットスタイル */
+.chat-container {
+    background-color: #27293d; /* var(--card-bg)と同じ */
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+    max-height: 55vh; /* 画面の高さに応じて調整 */
+    overflow-y: auto;
+    /* スクロールバーのカスタム（Webkit系ブラウザ） */
+    scrollbar-color: #555 #333;
+    scrollbar-width: thin;
+}
+.chat-container::-webkit-scrollbar {
+    width: 8px;
+}
+.chat-container::-webkit-scrollbar-thumb {
+    background-color: #585888;
+    border-radius: 4px;
+}
+.chat-container::-webkit-scrollbar-track {
+    background: #2e3047;
+}
+
+.message {
+    margin-bottom: 25px;
+    padding: 15px;
+    border-radius: 18px; /* 角を大きく丸める */
+    position: relative;
+    max-width: 90%;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    word-wrap: break-word;
+}
+
+/* AI面接官メッセージ */
+.message.ai {
+    background-color: #4a4e69; /* AIの吹き出し色（落ち着いた青紫系） */
+    color: var(--text-color);
+    margin-right: auto;
+    border-bottom-left-radius: 4px; /* 左下の角を少しだけ角ばらせる */
+}
+
+/* ユーザー（自分）のメッセージ */
+.message.user {
+    background-color: var(--primary-color);
+    color: #fff; /* 白い文字 */
+    margin-left: auto;
+    border-bottom-right-radius: 4px; /* 右下の角を少しだけ角ばらせる */
+}
+
+/* メッセージ時間 */
+.message-time {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-top: 5px;
+    color: inherit;
+    text-align: right;
+}
+.message.ai .message-time {
+    color: #c0c0d0;
+}
+.message.user .message-time {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 音声認識状況カード */
+.input-area .card {
+    border-radius: 8px;
+    border: none;
+    box-shadow: none;
+}
+.input-area .card-header {
+    background-color: #2e3047;
+}
+
+#partialTranscription {
+    font-style: italic;
+    color: var(--sub-text-color) !important;
+    min-height: 20px;
+}
+
+#finalTranscription {
+    color: var(--text-color);
+    font-weight: 500;
+    min-height: 20px;
+}
+
+/* 回答入力エリア */
+#answerInput {
+    background-color: #3b3d54; /* 入力欄の背景色を濃く */
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+#answerInput:focus {
+    background-color: #3b3d54;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(121, 87, 213, 0.25);
+}
+
+/* 録音ボタン */
+.record-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--danger-color);
+    color: white;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(255, 56, 96, 0.4);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.record-button:hover {
+    background-color: #e63056;
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(255, 56, 96, 0.6);
+}
+
+.record-button.recording {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* 送信ボタン */
+#sendAnswerBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #555 !important;
+    border-color: #555 !important;
+}
+
+#sendAnswerBtn:not(:disabled) {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    transition: all 0.2s ease;
+}
+
+#sendAnswerBtn:not(:disabled):hover {
+    background-color: #6a49be;
+    border-color: #6a49be;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* セッション操作ボタンの調整 */
+#pauseSessionBtn {
+    background-color: var(--warning-color);
+    border-color: var(--warning-color);
+    color: #1e1e2f; /* 濃い文字色 */
+    font-weight: bold;
+    /* transition: none; // 遷移を無効化しても良い */
+}
+#pauseSessionBtn:hover {
+    background-color: #ffc400;
+    border-color: #ffc400;
+    /* ホバー時の影を追加するとさらに良い */
+    box-shadow: 0 0 10px rgba(255, 218, 0, 0.5);
+}
+#endSessionBtn {
+    /* デフォルトの有効状態 */
+    background-color: var(--info-color); /* 有効時：infoカラー */
+    border-color: var(--info-color);
+}
+#endSessionBtn:hover {
+    background-color: #ff5a5a;
+    border-color: #ff5a5a;
+}
+
+/* ★新規追加: セッション終了ボタンの無効時のカスタムスタイル */
+.btn-disabled-style[disabled] {
+    /* 背景色を薄く、境界線も薄く */
+    background-color: #ffdada !important; /* カード背景色と合わせる */
+    border-color: #ffdada !important; /* ボーダー色と合わせる */
+    color: var(--sub-text-color) !important;
+    cursor: not-allowed;
+    opacity: 0.6; /* 全体の透明度も少し落とす */
+    pointer-events: none; /* クリックイベントを完全にブロック */
+    box-shadow: none;
+}
+/* ★ endSessionBtnをModal表示に使用しているため、CSSでpointer-events: none;を設定しつつ、JS側でも無効化します。 */
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .chat-container {
+        max-height: 40vh;
+    }
+    .message {
+        max-width: 95%;
+    }
+}
+</style>
+<script>
+// セッションIDをグローバル変数として設定
+window.sessionId = {{ session.id }};
+</script>
+{% endblock %}

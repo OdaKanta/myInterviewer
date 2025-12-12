@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* ================================================= */
+    /* ダークモード配色調整: Deep Dark / Professional Look */
+    /* ================================================= */
+
+    :root {
+        /* グローバル変数オーバーライド: より深い背景色とソフトなテキスト色 */
+        --bg-color: #0d1117; 	 	/* ディープダークな背景 */
+        --surface-color: #161b22; 	/* メインカード/ナビゲーションの表面色 */
+        --text-color: #c9d1d9; 	 	/* ソフトなライトグレーのテキスト */
+        --border-color: #30363d; 	/* 区切り線/ボーダー */
+        
+        /* アクセントカラー */
+        --primary-color: #3c89ff; 	/* 視認性の高い鮮やかな青 */
+        --success-color: #3fb950; 	/* 成功を表す鮮やかな緑 */
+        --warning-color: #f7b949; 	/* 警告を表すソフトイエロー */
+        --danger-color: #f85149; 	/* エラーを表す赤 */
+    }
+
+    /* base.htmlのカスタムクラスの再定義 (親要素の背景色に適用) */
+    body { 
+        background-color: var(--bg-color) !important; 
+        color: var(--text-color) !important; 
+    }
+
+    /* メインカード (ダッシュボード全体) の再定義 */
+    .card-custom {
+        background-color: var(--surface-color) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+    }
+    .card-header-custom {
+        background-color: #21262d !important; /* surfaceより少し濃くしてヘッダーを区別 */
+        border-bottom-color: var(--border-color) !important;
+        color: var(--text-color) !important;
+    }
+
+    /* 個別アイテム (教材カード/セッションアイテム) の背景色 (階層を強調) */
+    .material-card, .session-item {
+        background-color: #21262d; /* surface-color より一段階明るい（見分けやすく） */
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; 
+        border-radius: 8px; 
+    }
+    
+    /* ホバー時の効果: 背景色の変更は削除し、transformとbox-shadowのみ残す */
+    .material-card:hover, .session-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6) !important;
+    }
+    
+    /* テキスト・色 */
+    .text-secondary, .text-muted {
+        color: #8b949e !important; /* 控えめで読みやすいグレー */
+    }
+    .card-title {
+        color: var(--text-color) !important;
+    }
+
+    /* ボタンの調整 */
+    .btn-primary {
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+        color: var(--surface-color) !important; /* 文字色はカード背景色に近い濃い色に */
+    }
+    .btn-outline-primary {
+        color: var(--primary-color) !important;
+        border-color: var(--border-color) !important;
+        /* ホバーで色が反転しないように、半透明の原色を使用 */
+        --bs-btn-hover-bg: #3c89ff33; 
+        --bs-btn-hover-color: var(--primary-color);
+    }
+
+    /* バッジ */
+    .bg-success { background-color: var(--success-color) !important; color: #161b22 !important; }
+    .bg-warning { background-color: var(--warning-color) !important; color: #161b22 !important; }
+
+    /* リスト区切り線を調整 */
+    .list-unstyled li:not(:last-child) {
+        /* 区切り線をborderではなく、カードの影で見せるため削除 */
+        border-bottom: none; 
+    }
+    .list-unstyled {
+        padding-top: 5px;
+        /* セッションリストの項目間隔を確保するため、カスタムギャップを追加 */
+        /* d-gridとgap-2をHTMLに追加して、このCSSはシンプルに保ちます */
+    }
+    /* 個別リストアイテムに丸みを適用 */
+    .session-item {
+        /* 元のborder-radiusは material-card, .session-item に適用済み */
+        border: none !important; /* list-unstyled liのborderを上書きしないように */
+    }
+    
+</style>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5 fw-bold text-light"><i class="fas fa-tachometer-alt me-3" style="color: var(--primary-color);"></i>ダッシュボード</h1>
+        {% if user.is_authenticated %}
+            <p class="lead text-light">
+                こんにちは、<span class="fw-bold" style="color: var(--primary-color);">{{ user.first_name|default:user.username }}</span>さん！
+                {% if is_material_manager %}
+                    <span class="badge bg-success ms-2 p-2"><i class="fas fa-crown me-1"></i>教材管理者</span>
+                {% endif %}
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card card-custom">
+            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-book me-2" style="color: var(--primary-color);"></i>学習教材</h5>
+                {% if is_material_manager %}
+                    <a href="{% url 'upload_material' %}" class="btn btn-primary btn-sm px-3 py-2">
+                        <i class="fas fa-plus me-1"></i>新しい教材をアップロード
+                    </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if materials %}
+                    <div class="row">
+                        {% for material in materials %}
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 material-card shadow-sm border-0">
+                                <div class="card-body">
+                                    <h6 class="card-title fw-bold">{{ material.title }}</h6>
+                                    <p class="card-text text-secondary mb-3">
+                                        作成日: {{ material.created_at|date:"Y/m/d" }}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            {% if material.processed %}
+                                                <span class="badge bg-success">処理完了</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">処理中</span>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            {% if material.processed %}
+                                                <a href="{% url 'knowledge_tree_visualization' material.id %}" class="btn btn-sm btn-outline-primary me-2">
+                                                    <i class="fas fa-sitemap me-1"></i>ツリー表示
+                                                </a>
+                                                <button class="btn btn-sm btn-primary" onclick="startInterview({{ material.id }})">
+                                                    <i class="fas fa-play me-1"></i>開始
+                                                </button>
+                                            {% else %}
+                                                <small class="text-secondary"><i class="fas fa-spinner fa-spin me-1"></i>処理中...</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info border-0 text-center" role="alert" style="background-color: #1f1f1f; color: var(--primary-color);">
+                        <i class="fas fa-info-circle me-2"></i>まだ教材がアップロードされていません。
+                        {% if is_material_manager %}
+                            <br><a href="{% url 'upload_material' %}" class="alert-link" style="color: var(--primary-color); text-decoration: underline;">こちら</a>から最初の教材をアップロードしてください。
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card card-custom">
+            <div class="card-header card-header-custom">
+                <h6><i class="fas fa-history me-2" style="color: var(--warning-color);"></i>最近のセッション</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_sessions %}
+                    {# **変更点: d-gridとgap-2を追加して、リストアイテム間の間隔を広げます** #}
+                    <ul class="list-unstyled mb-0 d-grid gap-2 p-3"> 
+                    {% for session in recent_sessions %}
+                        {# **変更点: p-3 を py-2 px-3 に変更し、代わりに gap-2 で間隔を確保します** #}
+                        <li class="py-2 px-3 session-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold">{{ session.material.title }}</div>
+                                    <small class="text-secondary">{{ session.started_at|date:"m/d H:i" }}</small>
+                                </div>
+                                <div>
+                                    {% if session.status == 'completed' %}
+                                        <span class="badge bg-success">完了</span>
+                                    {% elif session.status == 'questioning' or session.status == 'explaining' %}
+                                        <a href="{% url 'questioning_phase' session.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-redo me-1"></i>続行
+                                        </a>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ session.get_status_display }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-secondary text-center p-3">まだセッションがありません。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // ホバーエフェクトのロジックをシンプルに - CSSで大半を制御
+    document.querySelectorAll('.material-card, .session-item').forEach(element => {
+        // ホバーエフェクトを滑らかにするため、JSでCSSの値を設定
+        element.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.4)';
+
+        element.addEventListener('mouseover', () => {
+            // ホバー時のtransformとbox-shadowのみを適用 (背景色の変更はCSSで削除済み)
+            element.style.transform = 'translateY(-2px)';
+            element.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.6)';
+        });
+        element.addEventListener('mouseout', () => {
+            // マウスアウト時にリセット (ベースのシャドウに戻す)
+            element.style.transform = 'translateY(0)';
+            element.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.4)'; 
+        });
+    });
+
+    // セッション開始関数 (機能は元のまま)
+    function startInterview(materialId) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                                 document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+        
+        fetch('/api/interview/sessions/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                material: materialId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw err; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.id) {
+                localStorage.setItem('interview_material_id', materialId);
+                localStorage.setItem('interview_session_id', data.id);
+                localStorage.removeItem('interview_current_node_id');
+                localStorage.removeItem('interview_uncleared_node_ids');
+                localStorage.removeItem('interview_next_question');
+                window.location.href = `/interview/${data.id}/explanation/`;
+            } else {
+                alert('セッションの作成に失敗しました。');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました: ' + (error.detail || JSON.stringify(error)));
+        });
+    }
+</script>
+{% endblock scripts %}
+{% endblock %}

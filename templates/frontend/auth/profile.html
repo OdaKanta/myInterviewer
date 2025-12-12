@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-user me-2"></i>プロフィール</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>ユーザー名:</strong></div>
+                    <div class="col-sm-9">{{ user.username }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>名前:</strong></div>
+                    <div class="col-sm-9">{{ user.first_name }} {{ user.last_name }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>メールアドレス:</strong></div>
+                    <div class="col-sm-9">{{ user.email }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>登録日:</strong></div>
+                    <div class="col-sm-9">{{ user.date_joined|date:"Y年m月d日" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>最終ログイン:</strong></div>
+                    <div class="col-sm-9">{{ user.last_login|date:"Y年m月d日 H:i" }}</div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                    <i class="fas fa-tachometer-alt me-1"></i>ダッシュボードに戻る
+                </a>
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger">
+                    <i class="fas fa-sign-out-alt me-1"></i>ログアウト
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
