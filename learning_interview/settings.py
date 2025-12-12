@@ -18,7 +18,12 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'ec2-56-155-45-112.ap-northeast-3.compute.amazonaws.com', # あなたのパブリックDNS
+    '56.155.45.112' # あなたのパブリックIP (またはそれに対応するIP)
+]
 
 # Login settings
 LOGIN_URL = '/'  # トップページ（ログインページ）
@@ -75,22 +80,22 @@ WSGI_APPLICATION = 'learning_interview.wsgi.application'
 ASGI_APPLICATION = 'learning_interview.asgi.application'
 
 # Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',  # SQLite 用のエンジン
-        'NAME': BASE_DIR / 'db.sqlite3',         # データベースファイルのパス
-    }
-}
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('POSTGRES_DB', 'myinterviewer'),
-#         'USER': os.environ.get('POSTGRES_USER', 'myuser'),
-#         'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'mypassword'),
-#         'HOST': 'db',  # docker-compose の service 名
-#         'PORT': 5432,
+#         'ENGINE': 'django.db.backends.sqlite3',  # SQLite 用のエンジン
+#         'NAME': BASE_DIR / 'db.sqlite3',         # データベースファイルのパス
 #     }
 # }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'myinterviewer'),
+        'USER': os.environ.get('POSTGRES_USER', 'myuser'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'mypassword'),
+        'HOST': 'db',  # docker-compose の service 名
+        'PORT': 5432,
+    }
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
